@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Website</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    h1 {
+      font-size: clamp(3rem, 7vw, 6rem);
+      font-weight: 400;
+      letter-spacing: -0.05em;
+      margin: 0;
+    }
+
+    p {
+      color: #aaa;
+      font-size: 1rem;
+      margin-top: 16px;
+    }
+
+    .links {
+      display: flex;
+      gap: 24px;
+      margin-top: 24px;
+      pointer-events: auto;
+    }
+
+    a {
+      color: white;
+      text-decoration: none;
+      font-size: 0.9rem;
+      border-bottom: 1px solid #555;
+      padding-bottom: 4px;
+      transition: border-color 0.2s;
+    }
+
+    a:hover {
+      border-color: white;
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="background"></canvas>
+
+  <main class="content">
+    <h1>Your Name</h1>
+    <p>Computer Science · Research · Projects</p>
+
+    <div class="links">
+      <a href="https://github.com/" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://linkedin.com/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      <a href="mailto:you@example.com">Email</a>
+    </div>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("background");
+    const ctx = canvas.getContext("2d");
+
+    let W, H;
+
+    const mouse = {
+      x: 0.5,
+      y: 0.5,
+      targetX: 0.5,
+      targetY: 0.5,
+      energy: 0,
+      lastX: null,
+      lastY: null,
+      lastTime: null
+    };
+
+    // Resize canvas to match the screen
+    function resize() {
+      W = window.innerWidth;
+      H = window.innerHeight;
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener("resize", resize);
+    resize();
+
+    // Track mouse position and movement speed
+    window.addEventListener("pointermove", (e) => {
+      const x = e.clientX / W;
+      const y = e.clientY / H;
+      const now = performance.now();
+
+      if (mouse.lastTime !== null) {
+        const dt = Math.max((now - mouse.lastTime) / 1000, 0.001);
+
+        const distance = Math.hypot(
+          x - mouse.lastX,
+          y - mouse.lastY
+        );
+
+        const velocity = distance / dt;
+
+        mouse.energy = Math.min(
+          1,
+          mouse.energy + velocity * 0.045
+        );
+      }
+
+      mouse.targetX = x;
+      mouse.targetY = y;
+
+      mouse.lastX = x;
+      mouse.lastY = y;
+      mouse.lastTime = now;
+    });
+
+    // Mathematical vector field
+    // Returns slope dy/dx at position (x,y)
+    function field(x, y) {
+      const frequency = 3 + mouse.y * 8;
+      const bend = (mouse.x - 0.5) * 5;
+
+      const wave1 =
+        0.32 * Math.sin(y * frequency + bend);
+
+      const wave2 =
+        0.18 * Math.cos(x * 7 + y * 4);
+
+      const turbulence =
+        mouse.energy *
+        0.65 *
+        Math.sin(x * 34 + y * 27);
+
+      return wave1 + wave2 + turbulence;
+    }
+
+    // Draw mathematical curves
+    function draw() {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, W, H);
+
+      // Smooth mouse movement
+      mouse.x += (mouse.targetX - mouse.x) * 0.045;
+      mouse.y += (mouse.targetY - mouse.y) * 0.045;
+
+      // Gradually reduce turbulence
+      mouse.energy *= 0.965;
+
+      const numberOfLines = 55;
+      const step = 5;
+
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.lineWidth = 0.8;
+
+      for (let i = 0; i < numberOfLines; i++) {
+        let y = (i / (numberOfLines - 1)) * H;
+
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+
+        for (let x = 0; x <= W; x += step) {
+          const nx = x / W;
+          const ny = y / H;
+
+          const slope = field(nx, ny);
+
+          // Euler integration
+          y += slope * step * 0.55;
+
+          ctx.lineTo(x + step, y);
+        }
+
+        ctx.stroke();
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    draw();
+  </script>
+
+</body>
+</html>
