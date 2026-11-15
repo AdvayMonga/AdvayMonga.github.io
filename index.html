@@ -4,12 +4,13 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Advay Monga</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300&display=swap" rel="stylesheet">
 <style>
   body {
     margin: 0;
     background: black;
     color: white;
-    font-family: Arial, sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
   }
 
   canvas {
@@ -27,9 +28,10 @@
   }
 
   h1 {
-    font-size: clamp(3rem, 8vw, 7rem);
-    font-weight: 400;
-    letter-spacing: -4px;
+    font-size: clamp(2.5rem, 6.5vw, 5.5rem);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 300;
+    letter-spacing: -2px;
     margin: 0 0 25px;
   }
 
@@ -87,52 +89,46 @@
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const off = document.createElement("canvas");
+const octx = off.getContext("2d");
+const S = 4;
 
-let W, H, mx = 0.5, my = 0.5, energy = 0;
+let W, H, mx = 0.5, my = 0.5, sx = 0.5, sy = 0.5, time = 0;
 
 function resize() {
   W = canvas.width = innerWidth;
   H = canvas.height = innerHeight;
+  off.width = Math.ceil(W / S);
+  off.height = Math.ceil(H / S);
 }
 
 onresize = resize;
 resize();
 
 onpointermove = e => {
-  const x = e.clientX / W, y = e.clientY / H;
-  energy = Math.min(1, energy + Math.hypot(x - mx, y - my) * 3);
-  mx = x;
-  my = y;
+  mx = e.clientX / W;
+  my = e.clientY / H;
 };
 
-function field(x, y) {
-  return 0.23 * Math.sin(11*y + 4*x + 5*mx)
-       + 0.17 * Math.sin(17*x - 8*y + 6*my)
-       + 0.13 * Math.cos(21*y + 11*x)
-       + 0.09 * Math.sin(38*x + 24*y)
-       + 0.38 * energy * Math.sin(45*x + 37*y);
-}
-
+// Domain-warped sine bands: sin(7(q + 0.3 sin(2.7r))), q and r warped by the mouse.
 function draw() {
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, W, H);
-  ctx.lineWidth = 0.7;
+  sx += (mx - sx) * 0.05;
+  sy += (my - sy) * 0.05;
+  const m = Math.min(W, H), img = octx.createImageData(off.width, off.height), px = img.data;
 
-  for (let i = 0; i < 80; i++) {
-    let y = i * H / 79;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-
-    for (let x = 0; x < W; x += 4) {
-      y += field(x / W, y / H) * 3.2;
-      ctx.lineTo(x + 4, y);
-    }
-
-    ctx.strokeStyle = `rgba(255,255,255,${0.26 + (i % 5) * 0.055})`;
-    ctx.stroke();
+  for (let j = 0; j < off.height; j++) for (let i = 0; i < off.width; i++) {
+    const u = i * S / m, v = j * S / m;
+    const q = u + 0.35 * Math.sin(2.1 * v + 0.3 * time + 4 * sx);
+    const r = v + 0.35 * Math.sin(1.9 * q - 0.25 * time + 4 * sy);
+    const val = Math.sin(7 * (q + 0.3 * Math.sin(2.7 * r + 0.2 * time)));
+    const k = (j * off.width + i) * 4;
+    px[k] = px[k + 1] = px[k + 2] = 55 * Math.min(1, Math.max(0, val * 3 + 0.5));
+    px[k + 3] = 255;
   }
 
-  energy *= 0.956;
+  octx.putImageData(img, 0, 0);
+  ctx.drawImage(off, 0, 0, W, H);
+  time += 0.016;
   requestAnimationFrame(draw);
 }
 
